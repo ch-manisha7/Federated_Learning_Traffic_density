@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Traffic Density Predictor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.3), transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(138, 43, 226, 0.3), transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 40px;
+            width: 100%;
+            max-width: 900px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            position: relative;
+            z-index: 1;
+            animation: slideUp 0.5s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            font-size: 32px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #64748b;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            animation: fadeIn 0.5s ease-out backwards;
+            animation-delay: calc(0.05s * var(--index));
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #334155;
+        }
+
+        .value-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            min-width: 60px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .slider-container {
+            position: relative;
+            padding: 8px 0;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 5px;
+            background: #e2e8f0;
+            outline: none;
+            appearance: none;
+            -webkit-appearance: none;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(102, 126, 234, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.7);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(102, 126, 234, 0.5);
+            border: none;
+        }
+
+        .range-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 4px;
+            font-size: 11px;
+            color: #94a3b8;
+        }
+
+        button {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            margin-top: 30px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .result {
+            margin-top: 30px;
+            padding: 30px;
+            border-radius: 16px;
+            background: white;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            animation: scaleIn 0.4s ease-out;
+        }
+
+        @keyframes scaleIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .prediction-header {
+            text-align: center;
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f1f5f9;
+        }
+
+        .prediction-title {
+            font-size: 18px;
+            color: #64748b;
+            margin-bottom: 10px;
+        }
+
+        .prediction-value-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .prediction-emoji {
+            font-size: 48px;
+        }
+
+        .prediction-value {
+            font-size: 48px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .density-level {
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        .very-low { background: #dcfce7; color: #166534; }
+        .low { background: #d1fae5; color: #065f46; }
+        .moderate { background: #fef3c7; color: #92400e; }
+        .high { background: #fed7aa; color: #9a3412; }
+        .very-high { background: #fee2e2; color: #991b1b; }
+
+        .info-section {
+            margin-top: 25px;
+        }
+
+        .info-section h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #334155;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .info-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .info-list li {
+            padding: 10px 15px;
+            margin-bottom: 8px;
+            background: #f8fafc;
+            border-radius: 8px;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #475569;
+            border-left: 3px solid #667eea;
+        }
+
+        .recommendations {
+            margin-top: 20px;
+            padding: 20px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            border-radius: 12px;
+        }
+
+        .recommendations h3 {
+            color: #667eea;
+        }
+
+        .error {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 24px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .prediction-value {
+                font-size: 36px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚦 Smart Traffic Density Predictor</h1>
+            <p class="subtitle">Adjust parameters to predict real-time traffic density</p>
+        </div>
+
+        <form action="/predict" method="POST">
+            <div class="form-grid">
+                <div class="input-group" style="--index: 1">
+                    <label>
+                        <span>City</span>
+                        <span class="value-badge" id="City_val">2.5</span>
+                    </label>
+                    <div class="slider-container">
+                        <input type="range" name="City" id="City" min="0" max="5" step="0.01" value="2.5" oninput="updateValue('City')">
+                        <div class="range-labels">
+                            <span>0</span>
+                            <span>5</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-group" style="--index: 2">
+                    <label>
+                        <span>Vehicle Type</span>
+                        <span class="value-badge" id="Vehicle Type_val">1</span>
+                    </label>
+                    <div class="slider-container">
+                        <input type="range" name="Vehicle Type" id="Vehicle Type" min="0" max="2" step="0.01" value="1" oninput="updateValue('Vehicle Type')">
+                        <div class="range-labels">
+                            <span>0</span>
+                            <span>2</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-group" style="--index: 3">
+                    <label>
+                        <span>Weather</span>
+                        <span class="value-badge" id="Weather_val">2</span>
+                    </label>
+                    <div class="slider-container">
+                        <input type="range" name="Weather" id="Weather" min="0" max="4" step="0.01" value="2" oninput="updateValue('Weather')">
+                        <div class="range-labels">
+                            <span>0</span>
+                            <span>4</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-group" style="--index: 4">
+                    <label>
+                        <span>Economic Condition</span>
+                        <span class="value-badge" id="Economic Condition_val">1</span>
+                    </label>
+                    <div class="slider-container">
+                        <input type="range" name="Economic Condition" id="Economic Condition" min="0" max="2" step="0.01" value="1" oninput="updateValue('Economic Condition')">
+                        <div class="range-labels">
+                            <span>0</span>
+                            <span>2</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-group" style="--index: 5">
+                    <label>
+                        <span>Day Of Week</span>
+                        <span class="value-badge" id="Day Of Week_val">3</span>
+                    </label>
+                    <div class="slider-container">
+                        <input type="range" name="Day Of Week" id="Day Of Week" min="0" max="6" step="0.01" value="3" oninput="updateValue('Day Of Week')">
+                        <div class="range-labels">
+                            <span>0</span>
+                            <span>6</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-group" style="--index: 6">
+                    <label>
+                        <span>Hour Of Day</span>
+                        <span class="value-badge" id="Hour Of Day_val">11.5</span>
+                    </label>
+                    <div class="slider-container">
+                        <input type="range" name="Hour Of Day" id="Hour Of Day" min="0" max="23" step="0.01" value="11.5" oninput="updateValue('Hour Of Day')">
+                        <div class="range-labels">
+                            <span>0</span>
+                            <span>23</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-group" style="--index: 7">
+                    <label>
+                        <span>Speed</span>
+                        <span class="value-badge" id="Speed_val">84.89</span>
+                    </label>
+                    <div class="slider-container">
+                        <input type="range" name="Speed" id="Speed" min="6.6934" max="163.0886" step="0.01" value="84.89" oninput="updateValue('Speed')">
+                        <div class="range-labels">
+                            <span>6.69</span>
+                            <span>163.09</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-group" style="--index: 8">
+                    <label>
+                        <span>Is Peak Hour</span>
+                        <span class="value-badge" id="Is Peak Hour_val">0.5</span>
+                    </label>
+                    <div class="slider-container">
+                        <input type="range" name="Is Peak Hour" id="Is Peak Hour" min="0" max="1" step="0.01" value="0.5" oninput="updateValue('Is Peak Hour')">
+                        <div class="range-labels">
+                            <span>0</span>
+                            <span>1</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-group" style="--index: 9">
+                    <label>
+                        <span>Random Event Occurred</span>
+                        <span class="value-badge" id="Random Event Occurred_val">0.5</span>
+                    </label>
+                    <div class="slider-container">
+                        <input type="range" name="Random Event Occurred" id="Random Event Occurred" min="0" max="1" step="0.01" value="0.5" oninput="updateValue('Random Event Occurred')">
+                        <div class="range-labels">
+                            <span>0</span>
+                            <span>1</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-group" style="--index: 10">
+                    <label>
+                        <span>Energy Consumption</span>
+                        <span class="value-badge" id="Energy Consumption_val">68.46</span>
+                    </label>
+                    <div class="slider-container">
+                        <input type="range" name="Energy Consumption" id="Energy Consumption" min="4.9296" max="131.9884" step="0.01" value="68.46" oninput="updateValue('Energy Consumption')">
+                        <div class="range-labels">
+                            <span>4.93</span>
+                            <span>131.99</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-group" style="--index: 11">
+                    <label>
+                        <span>Energy Efficiency</span>
+                        <span class="value-badge" id="Energy Efficiency_val">145.53</span>
+                    </label>
+                    <div class="slider-container">
+                        <input type="range" name="Energy Efficiency" id="Energy Efficiency" min="13.57" max="277.4932" step="0.01" value="145.53" oninput="updateValue('Energy Efficiency')">
+                        <div class="range-labels">
+                            <span>13.57</span>
+                            <span>277.49</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-group" style="--index: 12">
+                    <label>
+                        <span>Congestion Level</span>
+                        <span class="value-badge" id="Congestion Level_val">0.12</span>
+                    </label>
+                    <div class="slider-container">
+                        <input type="range" name="Congestion Level" id="Congestion Level" min="0.000054" max="0.237231" step="0.000001" value="0.118643" oninput="updateValue('Congestion Level')">
+                        <div class="range-labels">
+                            <span>0.00</span>
+                            <span>0.24</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-group" style="--index: 13">
+                    <label>
+                        <span>Peak Traffic Factor</span>
+                        <span class="value-badge" id="Peak Traffic Factor_val">1.55</span>
+                    </label>
+                    <div class="slider-container">
+                        <input type="range" name="Peak Traffic Factor" id="Peak Traffic Factor" min="0.0" max="3.0981" step="0.01" value="1.55" oninput="updateValue('Peak Traffic Factor')">
+                        <div class="range-labels">
+                            <span>0.00</span>
+                            <span>3.10</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-group" style="--index: 14">
+                    <label>
+                        <span>Traffic Pressure</span>
+                        <span class="value-badge" id="Traffic Pressure_val">0.08</span>
+                    </label>
+                    <div class="slider-container">
+                        <input type="range" name="Traffic Pressure" id="Traffic Pressure" min="0.0" max="0.155434" step="0.000001" value="0.077717" oninput="updateValue('Traffic Pressure')">
+                        <div class="range-labels">
+                            <span>0.00</span>
+                            <span>0.16</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-group" style="--index: 15">
+                    <label>
+                        <span>FedAvg Prediction</span>
+                        <span class="value-badge" id="FedAvg_pred_val">1.5</span>
+                    </label>
+                    <div class="slider-container">
+                        <input type="range" name="FedAvg_pred" id="FedAvg_pred" min="0.0" max="3.0" step="0.01" value="1.5" oninput="updateValue('FedAvg_pred')">
+                        <div class="range-labels">
+                            <span>0.00</span>
+                            <span>3.00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit">🔮 Predict Traffic Density</button>
+        </form>
+
+        {% if prediction %}
+        <div class="result">
+            <div class="prediction-header">
+                <div class="prediction-title">Predicted Traffic Density</div>
+                <div class="prediction-value-container">
+                    <span class="prediction-emoji">{{ traffic_info.emoji }}</span>
+                    <span class="prediction-value">{{ prediction }}</span>
+                </div>
+                <div class="density-level {{ traffic_info.color_class }}">
+                    {{ traffic_info.density_level }} Traffic Density
+                </div>
+            </div>
+
+            <div class="info-section">
+                <h3>📊 Traffic Analysis</h3>
+                <ul class="info-list">
+                    {% for desc in traffic_info.description %}
+                    <li>{{ desc|safe }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="recommendations">
+                <h3>💡 Recommendations</h3>
+                <ul class="info-list">
+                    {% for rec in traffic_info.recommendations %}
+                    <li>{{ rec }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        {% elif error %}
+        <div class="error">
+            <div>⚠️ Error</div>
+            <div style="margin-top: 8px; font-size: 14px;">{{ error }}</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+        function updateValue(name) {
+            const slider = document.getElementById(name);
+            const label = document.getElementById(name + '_val');
+            const value = parseFloat(slider.value);
+            
+            let formattedValue;
+            if (value < 1) {
+                formattedValue = value.toFixed(2);
+            } else if (value < 10) {
+                formattedValue = value.toFixed(2);
+            } else {
+                formattedValue = value.toFixed(2);
+            }
+            
+            label.textContent = formattedValue;
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const sliders = document.querySelectorAll('input[type="range"]');
+            sliders.forEach(slider => {
+                updateValue(slider.id);
+            });
+        });
+    </script>
+</body>
+</html>
